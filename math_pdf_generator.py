@@ -91,11 +91,19 @@ class MathAssessmentGenerator:
             skill_name: Name of the skill being practiced
             questions: List of question dictionaries
             answer_key_type: None, 'answers_only', or 'with_steps'
-            filename: Output filename (default: auto-generated)
+            filename: Output filename (default: auto-generated in temp directory)
+        
+        Returns:
+            filepath to the generated PDF
         """
+        import tempfile
+        import os
+        
         if filename is None:
+            # Use temp directory
+            temp_dir = tempfile.gettempdir()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"/mnt/user-data/outputs/practice_{skill_name.replace(' ', '_')}_{timestamp}.pdf"
+            filename = os.path.join(temp_dir, f"practice_{skill_name.replace(' ', '_')}_{timestamp}.pdf")
         
         doc = SimpleDocTemplate(filename, pagesize=letter,
                                 topMargin=0.75*inch, bottomMargin=0.75*inch,
@@ -160,10 +168,17 @@ class MathAssessmentGenerator:
             skill_sections: List of dicts with 'skill_name' and 'questions'
             answer_key_type: None, 'answers_only', or 'with_steps'
             filename: Output filename
+        
+        Returns:
+            filepath to the generated PDF
         """
+        import tempfile
+        import os
+        
         if filename is None:
+            temp_dir = tempfile.gettempdir()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"/mnt/user-data/outputs/worksheet_{timestamp}.pdf"
+            filename = os.path.join(temp_dir, f"worksheet_{timestamp}.pdf")
         
         doc = SimpleDocTemplate(filename, pagesize=letter,
                                 topMargin=0.75*inch, bottomMargin=0.75*inch,
@@ -245,10 +260,17 @@ class MathAssessmentGenerator:
             skill_sections: List of dicts with 'skill_name' and 'questions' (sorted by difficulty)
             answer_key_type: None, 'answers_only', or 'with_steps'
             filename: Output filename
+        
+        Returns:
+            filepath to the generated PDF
         """
+        import tempfile
+        import os
+        
         if filename is None:
+            temp_dir = tempfile.gettempdir()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"/mnt/user-data/outputs/quiz_{timestamp}.pdf"
+            filename = os.path.join(temp_dir, f"quiz_{timestamp}.pdf")
         
         # Similar to worksheet but with difficulty indicators
         doc = SimpleDocTemplate(filename, pagesize=letter,
@@ -338,10 +360,17 @@ class MathAssessmentGenerator:
             all_skills_questions: List of question dicts sorted by difficulty across all skills
             answer_key_type: None, 'answers_only', or 'with_steps'
             filename: Output filename
+        
+        Returns:
+            filepath to the generated PDF
         """
+        import tempfile
+        import os
+        
         if filename is None:
+            temp_dir = tempfile.gettempdir()
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"/mnt/user-data/outputs/test_{timestamp}.pdf"
+            filename = os.path.join(temp_dir, f"test_{timestamp}.pdf")
         
         doc = SimpleDocTemplate(filename, pagesize=letter,
                                 topMargin=0.75*inch, bottomMargin=0.75*inch,
