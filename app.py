@@ -833,10 +833,7 @@ else:
                 st.session_state.generate_pdf = False
                 st.session_state.pdf_file = filename
                 
-                # Show immediate success
-                st.success("✅ PDF generated successfully!")
-                st.info("👇 Scroll down to download your PDF")
-                st.rerun()  # Refresh to show download section
+                # Don't rerun - let the download section appear below
                 
             except Exception as e:
                 st.error(f"Error generating PDF: {e}")
@@ -849,8 +846,8 @@ else:
         st.session_state.generate_pdf = False
         
         # Big success banner
-        st.balloons()
         st.success("🎉 **PDF Generated Successfully!**")
+        st.balloons()  # Celebrate when download is ready
         
         st.markdown('<div class="pdf-section">', unsafe_allow_html=True)
         
