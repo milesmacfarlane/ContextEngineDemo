@@ -422,7 +422,7 @@ else:
         if assessment_type == "practice":
             # Single context for practice
             st.write("**Context:**")
-            all_contexts = list(generator.engine.contexts_df['ContextID'].unique())
+            all_contexts = list(generator.engine.metadata_index.keys())
             
             # Group by category
             context_by_category = {}
@@ -450,7 +450,7 @@ else:
         elif assessment_type == "worksheet":
             # Multiple contexts
             st.write("**Select 2-4 Skills:**")
-            all_contexts = list(generator.engine.contexts_df['ContextID'].unique())
+            all_contexts = list(generator.engine.metadata_index.keys())
             
             # Simplified: just show all contexts
             available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
@@ -471,7 +471,7 @@ else:
         elif assessment_type == "quiz":
             # 2-3 contexts with difficulty progression
             st.write("**Select 2-3 Skills:**")
-            all_contexts = list(generator.engine.contexts_df['ContextID'].unique())
+            all_contexts = list(generator.engine.metadata_index.keys())
             
             available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
                         for ctx in all_contexts]
