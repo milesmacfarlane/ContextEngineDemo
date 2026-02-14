@@ -420,13 +420,28 @@ else:
         st.subheader("2️⃣ Question Settings")
         
         if assessment_type == "practice":
+            # Variation selector first
+            st.write("**Variation:**")
+            selected_variation = st.selectbox(
+                "Question type",
+                ["calculate", "missing_value", "compare", "missing_count"],
+                format_func=lambda x: {
+                    "calculate": "📊 Calculate Mean",
+                    "missing_value": "🎯 Find Missing Value",
+                    "compare": "⚖️ Compare Means",
+                    "missing_count": "🔢 Find Number of Values"
+                }[x],
+                key="practice_variation"
+            )
+            
             # Single context for practice
             st.write("**Context:**")
-            all_contexts = list(generator.engine.metadata_index.keys())
+            # Get only compatible contexts for this variation
+            compatible_contexts = generator.engine.get_compatible_contexts(selected_variation)
             
             # Group by category
             context_by_category = {}
-            for ctx_id in all_contexts:
+            for ctx_id in compatible_contexts:
                 meta = generator.engine.get_context_metadata(ctx_id)
                 category = meta['Category']
                 if category not in context_by_category:
@@ -448,56 +463,130 @@ else:
             num_questions = st.slider("Number of questions", 3, 15, 5)
             
         elif assessment_type == "worksheet":
-            # Multiple contexts
-            st.write("**Select 2-4 Skills:**")
-            all_contexts = list(generator.engine.metadata_index.keys())
-            
-            # Simplified: just show all contexts
-            available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
-                        for ctx in all_contexts]
-            
-            selected = st.multiselect(
-                "Contexts",
-                available,
-                format_func=lambda x: x[1],
+            # Variation selector
+            st.write("**Variations to include:**")
+            available_variations = ["calculate", "missing_value", "compare", "missing_count"]
+            selected_variations = st.multiselect(
+                "Select 1-4 variations",
+                available_variations,
+                default=["calculate"],
+                format_func=lambda x: {
+                    "calculate": "📊 Calculate Mean",
+                    "missing_value": "🎯 Find Missing Value",
+                    "compare": "⚖️ Compare Means",
+                    "missing_count": "🔢 Find Number of Values"
+                }[x],
                 max_selections=4,
-                key="worksheet_contexts"
+                key="worksheet_variations"
             )
             
-            selected_contexts = [s[0] for s in selected] if selected else []
+            if not selected_variations:
+                st.warning("Please select at least one variation")
+                selected_contexts = []
+            else:
+                # Multiple contexts
+                st.write("**Select 2-4 Skills:**")
+                # Get contexts compatible with ANY of the selected variations
+                all_compatible = set()
+                for var in selected_variations:
+                    all_compatible.update(generator.engine.get_compatible_contexts(var))
+                all_contexts = list(all_compatible)
+                
+                # Simplified: just show all contexts
+                available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
+                            for ctx in all_contexts]
+                
+                selected = st.multiselect(
+                    "Contexts",
+                    available,
+                    format_func=lambda x: x[1],
+                    max_selections=4,
+                    key="worksheet_contexts"
+                )
+                
+                selected_contexts = [s[0] for s in selected] if selected else []
             
             num_questions_per = st.slider("Questions per skill", 2, 8, 3)
             
         elif assessment_type == "quiz":
-            # 2-3 contexts with difficulty progression
-            st.write("**Select 2-3 Skills:**")
-            all_contexts = list(generator.engine.metadata_index.keys())
-            
-            available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
-                        for ctx in all_contexts]
-            
-            selected = st.multiselect(
-                "Contexts",
-                available,
-                format_func=lambda x: x[1],
+            # Variation selector
+            st.write("**Variations to include:**")
+            available_variations = ["calculate", "missing_value", "compare", "missing_count"]
+            selected_variations = st.multiselect(
+                "Select 1-3 variations",
+                available_variations,
+                default=["calculate"],
+                format_func=lambda x: {
+                    "calculate": "📊 Calculate Mean",
+                    "missing_value": "🎯 Find Missing Value",
+                    "compare": "⚖️ Compare Means",
+                    "missing_count": "🔢 Find Number of Values"
+                }[x],
                 max_selections=3,
-                key="quiz_contexts"
+                key="quiz_variations"
             )
             
-            selected_contexts = [s[0] for s in selected] if selected else []
+            if not selected_variations:
+                st.warning("Please select at least one variation")
+                selected_contexts = []
+            else:
+                # 2-3 contexts with difficulty progression
+                st.write("**Select 2-3 Skills:**")
+                # Get contexts compatible with ANY of the selected variations
+                all_compatible = set()
+                for var in selected_variations:
+                    all_compatible.update(generator.engine.get_compatible_contexts(var))
+                all_contexts = list(all_compatible)
+                
+                available = [(ctx, generator.engine.get_context_metadata(ctx)['ContextName']) 
+                            for ctx in all_contexts]
+                
+                selected = st.multiselect(
+                    "Contexts",
+                    available,
+                    format_func=lambda x: x[1],
+                    max_selections=3,
+                    key="quiz_contexts"
+                )
+                
+                selected_contexts = [s[0] for s in selected] if selected else []
             
             num_questions_per = st.slider("Questions per skill", 2, 5, 3)
             
         else:  # test
             # All available contexts
-            st.write("**Comprehensive test across all compatible skills**")
-            variation_for_test = st.selectbox(
-                "Primary variation",
-                ["calculate", "missing_value", "compare"],
-                key="test_variation"
+            st.write("**Variations to include:**")
+            available_variations = ["calculate", "missing_value", "compare", "missing_count"]
+            selected_variations = st.multiselect(
+                "Select variations for test",
+                available_variations,
+                default=["calculate", "missing_value"],
+                format_func=lambda x: {
+                    "calculate": "📊 Calculate Mean",
+                    "missing_value": "🎯 Find Missing Value",
+                    "compare": "⚖️ Compare Means",
+                    "missing_count": "🔢 Find Number of Values"
+                }[x],
+                key="test_variations"
             )
             
-            selected_contexts = generator.engine.get_compatible_contexts(variation_for_test)[:5]
+            if not selected_variations:
+                st.warning("Please select at least one variation")
+                selected_contexts = []
+            else:
+                st.write("**Comprehensive test across compatible skills**")
+                # Get contexts compatible with ALL selected variations
+                if len(selected_variations) == 1:
+                    compatible_set = set(generator.engine.get_compatible_contexts(selected_variations[0]))
+                else:
+                    # Intersection: only contexts that support ALL variations
+                    compatible_set = set(generator.engine.get_compatible_contexts(selected_variations[0]))
+                    for var in selected_variations[1:]:
+                        compatible_set &= set(generator.engine.get_compatible_contexts(var))
+                
+                selected_contexts = list(compatible_set)[:8]  # Limit to 8 contexts for tests
+                st.info(f"Using {len(selected_contexts)} contexts that support all selected variations")
+            
             num_questions_total = st.slider("Total questions", 10, 30, 15)
         
         st.subheader("3️⃣ Difficulty")
@@ -523,11 +612,13 @@ else:
         st.markdown("---")
         
         # Generate PDF button
-        can_generate = (
-            (assessment_type == "practice" and len(selected_contexts) == 1) or
-            (assessment_type in ["worksheet", "quiz"] and len(selected_contexts) >= 2) or
-            (assessment_type == "test")
-        )
+        can_generate = False
+        if assessment_type == "practice":
+            can_generate = len(selected_contexts) == 1
+        elif assessment_type in ["worksheet", "quiz"]:
+            can_generate = len(selected_contexts) >= 2 and len(selected_variations) >= 1
+        elif assessment_type == "test":
+            can_generate = len(selected_contexts) >= 3 and len(selected_variations) >= 1
         
         if st.button("📄 Generate PDF", type="primary", use_container_width=True, disabled=not can_generate):
             st.session_state.generate_pdf = True
@@ -583,13 +674,12 @@ else:
                 questions_for_pdf = []
                 
                 if assessment_type == "practice":
-                    # Single context, multiple questions
+                    # Single context, multiple questions with selected variation
                     context_id = selected_contexts[0]
-                    variation = "calculate"  # Default for practice
                     
                     for i in range(num_questions):
                         q = generator.generate(
-                            variation=variation,
+                            variation=selected_variation,
                             difficulty=difficulty,
                             context_id=context_id,
                             level="standard"
@@ -603,21 +693,36 @@ else:
                     
                     # Generate PDF
                     meta = generator.engine.get_context_metadata(context_id)
+                    variation_name = {
+                        "calculate": "Calculate Mean",
+                        "missing_value": "Find Missing Value",
+                        "compare": "Compare Means",
+                        "missing_count": "Find Number of Values"
+                    }[selected_variation]
+                    
                     filename = pdf_generator.create_practice_page(
-                        skill_name=meta['ContextName'],
+                        skill_name=f"{meta['ContextName']} - {variation_name}",
                         questions=questions_for_pdf,
                         answer_key_type=answer_key_type
                     )
                     
                 elif assessment_type == "worksheet":
-                    # Multiple contexts
+                    # Multiple contexts, rotate through variations
                     skill_sections = []
                     
                     for context_id in selected_contexts:
                         section_questions = []
-                        variation = "calculate"
                         
+                        # Rotate through selected variations for each context
                         for i in range(num_questions_per):
+                            variation = selected_variations[i % len(selected_variations)]
+                            
+                            # Check if this context supports this variation
+                            compatible = generator.engine.get_compatible_contexts(variation)
+                            if context_id not in compatible:
+                                # Skip this variation for this context
+                                continue
+                            
                             q = generator.generate(
                                 variation=variation,
                                 difficulty=difficulty,
@@ -631,11 +736,12 @@ else:
                                 'difficulty': 'Easy' if difficulty <= 2 else 'Medium' if difficulty <= 3 else 'Hard'
                             })
                         
-                        meta = generator.engine.get_context_metadata(context_id)
-                        skill_sections.append({
-                            'skill_name': meta['ContextName'],
-                            'questions': section_questions
-                        })
+                        if section_questions:  # Only add if we generated questions
+                            meta = generator.engine.get_context_metadata(context_id)
+                            skill_sections.append({
+                                'skill_name': meta['ContextName'],
+                                'questions': section_questions
+                            })
                     
                     filename = pdf_generator.create_worksheet(
                         title="Mean Calculation Worksheet",
@@ -644,15 +750,22 @@ else:
                     )
                 
                 elif assessment_type == "quiz":
-                    # Progressive difficulty
+                    # Progressive difficulty with selected variations
                     skill_sections = []
                     difficulties = [1, 2, 3]  # Easy, Medium, Hard
                     
                     for context_id in selected_contexts:
                         section_questions = []
-                        variation = "calculate"
                         
                         for i, diff in enumerate(difficulties[:num_questions_per]):
+                            # Rotate through selected variations
+                            variation = selected_variations[i % len(selected_variations)]
+                            
+                            # Check compatibility
+                            compatible = generator.engine.get_compatible_contexts(variation)
+                            if context_id not in compatible:
+                                continue
+                            
                             q = generator.generate(
                                 variation=variation,
                                 difficulty=diff,
@@ -666,11 +779,12 @@ else:
                                 'difficulty': 'Easy' if diff <= 2 else 'Medium' if diff <= 3 else 'Hard'
                             })
                         
-                        meta = generator.engine.get_context_metadata(context_id)
-                        skill_sections.append({
-                            'skill_name': meta['ContextName'],
-                            'questions': section_questions
-                        })
+                        if section_questions:
+                            meta = generator.engine.get_context_metadata(context_id)
+                            skill_sections.append({
+                                'skill_name': meta['ContextName'],
+                                'questions': section_questions
+                            })
                     
                     filename = pdf_generator.create_quiz(
                         title="Mean Calculation Quiz",
@@ -679,17 +793,18 @@ else:
                     )
                 
                 else:  # test
-                    # Comprehensive test
+                    # Comprehensive test with selected variations
                     all_questions = []
                     difficulties = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5] * 3  # Progressive
                     
-                    questions_per_context = num_questions_total // len(selected_contexts)
+                    questions_per_context = num_questions_total // len(selected_contexts) if selected_contexts else 0
                     
                     for context_id in selected_contexts:
-                        variation = "calculate"
-                        
                         for i in range(questions_per_context):
+                            # Rotate through variations
+                            variation = selected_variations[i % len(selected_variations)]
                             diff = difficulties[i % len(difficulties)]
+                            
                             q = generator.generate(
                                 variation=variation,
                                 difficulty=diff,
