@@ -405,19 +405,225 @@ else:
     with st.sidebar:
         st.header("📄 PDF Generation")
         
+        # STEP 1: Assessment Type
         st.subheader("1️⃣ Assessment Type")
         assessment_type = st.selectbox(
-            "Type",
+            "What type of assessment?",
             ["practice", "worksheet", "quiz", "test"],
             format_func=lambda x: {
-                "practice": "📝 Practice Page (Single Skill)",
-                "worksheet": "📋 Worksheet (Multiple Skills)",
-                "quiz": "📊 Quiz (Progressive Difficulty)",
-                "test": "📖 Test (Comprehensive)"
-            }[x]
+                "practice": "📝 Practice Page",
+                "worksheet": "📋 Worksheet",
+                "quiz": "📊 Quiz",
+                "test": "📖 Test"
+            }[x],
+            help={
+                "practice": "Single skill, focused practice",
+                "worksheet": "Multiple skills, mixed practice",
+                "quiz": "Progressive difficulty assessment",
+                "test": "Comprehensive assessment"
+            }[assessment_type] if 'assessment_type' in locals() else "Choose assessment type"
         )
         
-        st.subheader("2️⃣ Question Settings")
+        # Store in session state
+        if 'prev_assessment_type' not in st.session_state or st.session_state.prev_assessment_type != assessment_type:
+            st.session_state.prev_assessment_type = assessment_type
+            # Reset selections when type changes
+            if 'selected_variations' in st.session_state:
+                del st.session_state.selected_variations
+            if 'selected_categories' in st.session_state:
+                del st.session_state.selected_categories
+            if 'selected_contexts' in st.session_state:
+                del st.session_state.selected_contexts
+        
+        st.markdown("---")
+        
+        # STEP 2: Question Types (Variations)
+        st.subheader("2️⃣ Question Types")
+        
+        col_select_all = st.columns([3, 1])
+        with col_select_all[1]:
+            if st.button("Select All", key="select_all_variations", use_container_width=True):
+                st.session_state.selected_variations = ["calculate", "missing_value", "compare", "missing_count"]
+                st.rerun()
+        
+        if 'selected_variations' not in st.session_state:
+            st.session_state.selected_variations = ["calculate"]
+        
+        variation_options = {
+            "calculate": "📊 Calculate Mean",
+            "missing_value": "🎯 Find Missing Value",
+            "compare": "⚖️ Compare Means",
+            "missing_count": "🔢 Find Number of Values"
+        }
+        
+        selected_variations = []
+        for var_key, var_label in variation_options.items():
+            if st.checkbox(
+                var_label, 
+                value=var_key in st.session_state.selected_variations,
+                key=f"var_{var_key}"
+            ):
+                selected_variations.append(var_key)
+        
+        st.session_state.selected_variations = selected_variations if selected_variations else ["calculate"]
+        
+        st.markdown("---")
+        
+        # STEP 3: Categories (only show if variations selected)
+        if selected_variations:
+            st.subheader("3️⃣ Categories")
+            
+            # Get all compatible contexts for selected variations
+            all_compatible = set()
+            for var in selected_variations:
+                all_compatible.update(generator.engine.get_compatible_contexts(var))
+            
+            # Get unique categories from compatible contexts
+            available_categories = set()
+            for ctx_id in all_compatible:
+                meta = generator.engine.get_context_metadata(ctx_id)
+                available_categories.add(meta['Category'])
+            
+            available_categories = sorted(available_categories)
+            
+            col_select_all_cat = st.columns([3, 1])
+            with col_select_all_cat[1]:
+                if st.button("All", key="select_all_categories", use_container_width=True):
+                    st.session_state.selected_categories = available_categories
+                    st.rerun()
+            
+            if 'selected_categories' not in st.session_state:
+                st.session_state.selected_categories = available_categories  # Default to ALL
+            
+            selected_categories = []
+            for category in available_categories:
+                if st.checkbox(
+                    category, 
+                    value=category in st.session_state.selected_categories,
+                    key=f"cat_{category}"
+                ):
+                    selected_categories.append(category)
+            
+            st.session_state.selected_categories = selected_categories if selected_categories else available_categories
+            
+            st.markdown("---")
+            
+            # STEP 4: Specific Contexts (only show if categories selected)
+            if selected_categories:
+                st.subheader("4️⃣ Contexts")
+                
+                # Filter contexts by selected categories
+                contexts_in_categories = []
+                for ctx_id in all_compatible:
+                    meta = generator.engine.get_context_metadata(ctx_id)
+                    if meta['Category'] in selected_categories:
+                        contexts_in_categories.append((ctx_id, meta['ContextName'], meta['Category']))
+                
+                # Sort by category, then name
+                contexts_in_categories.sort(key=lambda x: (x[2], x[1]))
+                
+                col_select_all_ctx = st.columns([3, 1])
+                with col_select_all_ctx[1]:
+                    if st.button("All", key="select_all_contexts", use_container_width=True):
+                        st.session_state.selected_contexts = [c[0] for c in contexts_in_categories]
+                        st.rerun()
+                
+                if 'selected_contexts' not in st.session_state:
+                    st.session_state.selected_contexts = [c[0] for c in contexts_in_categories]  # Default to ALL
+                
+                # Group by category for display
+                st.write(f"**{len(contexts_in_categories)} contexts available:**")
+                
+                with st.expander("Select specific contexts", expanded=False):
+                    selected_contexts = []
+                    
+                    current_category = None
+                    for ctx_id, ctx_name, category in contexts_in_categories:
+                        # Show category header
+                        if category != current_category:
+                            if current_category is not None:
+                                st.markdown("---")
+                            st.markdown(f"**{category}**")
+                            current_category = category
+                        
+                        if st.checkbox(
+                            ctx_name,
+                            value=ctx_id in st.session_state.selected_contexts,
+                            key=f"ctx_{ctx_id}"
+                        ):
+                            selected_contexts.append(ctx_id)
+                    
+                    st.session_state.selected_contexts = selected_contexts if selected_contexts else [c[0] for c in contexts_in_categories]
+                
+                # Show count
+                st.info(f"✅ **{len(st.session_state.selected_contexts)} contexts** selected")
+                
+                st.markdown("---")
+                
+                # STEP 5: Question Settings
+                st.subheader("5️⃣ Question Settings")
+                
+                if assessment_type == "practice":
+                    num_questions = st.slider("Questions", 3, 15, 5, key="practice_num")
+                    difficulty = st.slider("Difficulty", 1, 5, 2, key="practice_diff")
+                elif assessment_type == "worksheet":
+                    num_questions_per = st.slider("Questions per context", 2, 8, 3, key="worksheet_num")
+                    difficulty = st.slider("Difficulty", 1, 5, 2, key="worksheet_diff")
+                elif assessment_type == "quiz":
+                    num_questions_per = st.slider("Questions per context", 2, 5, 3, key="quiz_num")
+                    st.info("💡 Difficulty will progress Easy → Medium → Hard")
+                    difficulty = None
+                else:  # test
+                    num_questions_total = st.slider("Total questions", 10, 30, 15, key="test_num")
+                    st.info("💡 Difficulty will progress across all questions")
+                    difficulty = None
+                
+                st.markdown("---")
+                
+                # STEP 6: Answer Key
+                st.subheader("6️⃣ Answer Key")
+                answer_key_option = st.radio(
+                    "Include answer key?",
+                    ["No answer key", "Answers only", "Full solutions with steps"],
+                    key="answer_key"
+                )
+                
+                answer_key_type = {
+                    "No answer key": None,
+                    "Answers only": "answers_only",
+                    "Full solutions with steps": "with_steps"
+                }[answer_key_option]
+                
+                st.markdown("---")
+                
+                # Generate button
+                can_generate = len(st.session_state.selected_contexts) >= 1 and len(selected_variations) >= 1
+                
+                if not can_generate:
+                    st.warning("⚠️ Select at least 1 context and 1 question type")
+                
+                if st.button("📄 Generate PDF", type="primary", use_container_width=True, disabled=not can_generate):
+                    st.session_state.generate_pdf = True
+                    
+                    # Store settings for PDF generation
+                    st.session_state.pdf_settings = {
+                        'assessment_type': assessment_type,
+                        'selected_variations': selected_variations,
+                        'selected_contexts': st.session_state.selected_contexts[:],
+                        'answer_key_type': answer_key_type,
+                        'answer_key_option': answer_key_option,
+                        'num_questions': num_questions if assessment_type == "practice" else None,
+                        'num_questions_per': num_questions_per if assessment_type in ["worksheet", "quiz"] else None,
+                        'num_questions_total': num_questions_total if assessment_type == "test" else None,
+                        'difficulty': difficulty
+                    }
+        
+        # Show stats
+        st.markdown("---")
+        st.subheader("📊 Summary")
+        st.metric("Question Types", len(selected_variations) if selected_variations else 0)
+        st.metric("Categories", len(st.session_state.get('selected_categories', [])))
+        st.metric("Contexts", len(st.session_state.get('selected_contexts', [])))
         
         if assessment_type == "practice":
             # Variation selector first
@@ -668,18 +874,30 @@ else:
             """)
     
     elif st.session_state.get('generate_pdf', False):
+        # Get settings from session state
+        settings = st.session_state.get('pdf_settings', {})
+        assessment_type = settings.get('assessment_type', 'practice')
+        selected_variations = settings.get('selected_variations', ['calculate'])
+        selected_contexts = settings.get('selected_contexts', [])
+        answer_key_type = settings.get('answer_key_type', None)
+        answer_key_option = settings.get('answer_key_option', 'No answer key')
+        
         with st.spinner("📄 Generating PDF assessment..."):
             try:
                 # Generate questions
                 questions_for_pdf = []
                 
                 if assessment_type == "practice":
-                    # Single context, multiple questions with selected variation
-                    context_id = selected_contexts[0]
+                    # Practice: use first context, rotate through variations
+                    num_questions = settings.get('num_questions', 5)
+                    difficulty = settings.get('difficulty', 2)
                     
                     for i in range(num_questions):
+                        context_id = selected_contexts[i % len(selected_contexts)]
+                        variation = selected_variations[i % len(selected_variations)]
+                        
                         q = generator.generate(
-                            variation=selected_variation,
+                            variation=variation,
                             difficulty=difficulty,
                             context_id=context_id,
                             level="standard"
@@ -692,22 +910,17 @@ else:
                         })
                     
                     # Generate PDF
-                    meta = generator.engine.get_context_metadata(context_id)
-                    variation_name = {
-                        "calculate": "Calculate Mean",
-                        "missing_value": "Find Missing Value",
-                        "compare": "Compare Means",
-                        "missing_count": "Find Number of Values"
-                    }[selected_variation]
-                    
+                    variation_names = ", ".join([v.replace('_', ' ').title() for v in selected_variations])
                     filename = pdf_generator.create_practice_page(
-                        skill_name=f"{meta['ContextName']} - {variation_name}",
+                        skill_name=f"Mean Calculations - {variation_names}",
                         questions=questions_for_pdf,
                         answer_key_type=answer_key_type
                     )
                     
                 elif assessment_type == "worksheet":
                     # Multiple contexts, rotate through variations
+                    num_questions_per = settings.get('num_questions_per', 3)
+                    difficulty = settings.get('difficulty', 2)
                     skill_sections = []
                     
                     for context_id in selected_contexts:
@@ -720,7 +933,6 @@ else:
                             # Check if this context supports this variation
                             compatible = generator.engine.get_compatible_contexts(variation)
                             if context_id not in compatible:
-                                # Skip this variation for this context
                                 continue
                             
                             q = generator.generate(
@@ -736,7 +948,7 @@ else:
                                 'difficulty': 'Easy' if difficulty <= 2 else 'Medium' if difficulty <= 3 else 'Hard'
                             })
                         
-                        if section_questions:  # Only add if we generated questions
+                        if section_questions:
                             meta = generator.engine.get_context_metadata(context_id)
                             skill_sections.append({
                                 'skill_name': meta['ContextName'],
@@ -751,6 +963,7 @@ else:
                 
                 elif assessment_type == "quiz":
                     # Progressive difficulty with selected variations
+                    num_questions_per = settings.get('num_questions_per', 3)
                     skill_sections = []
                     difficulties = [1, 2, 3]  # Easy, Medium, Hard
                     
@@ -794,6 +1007,7 @@ else:
                 
                 else:  # test
                     # Comprehensive test with selected variations
+                    num_questions_total = settings.get('num_questions_total', 15)
                     all_questions = []
                     difficulties = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5] * 3  # Progressive
                     
@@ -842,12 +1056,19 @@ else:
     
     # Show download button if PDF generated
     if 'pdf_file' in st.session_state and st.session_state.pdf_file:
+        # Get settings
+        settings = st.session_state.get('pdf_settings', {})
+        assessment_type = settings.get('assessment_type', 'practice')
+        answer_key_option = settings.get('answer_key_option', 'No answer key')
+        selected_variations = settings.get('selected_variations', [])
+        selected_contexts = settings.get('selected_contexts', [])
+        
         # Clear the generation flag
         st.session_state.generate_pdf = False
         
         # Big success banner
         st.success("🎉 **PDF Generated Successfully!**")
-        st.balloons()  # Celebrate when download is ready
+        st.balloons()
         
         st.markdown('<div class="pdf-section">', unsafe_allow_html=True)
         
@@ -866,16 +1087,8 @@ else:
                 st.metric("Assessment Type", assessment_type.title())
                 st.metric("Answer Key", answer_key_option)
             with col_info2:
-                if assessment_type == "practice":
-                    st.metric("Questions", len(questions_for_pdf))
-                    st.metric("Variation", selected_variation.replace('_', ' ').title())
-                elif assessment_type in ["worksheet", "quiz"]:
-                    total_q = sum(len(section['questions']) for section in skill_sections)
-                    st.metric("Total Questions", total_q)
-                    st.metric("Skills", len(selected_contexts))
-                else:  # test
-                    st.metric("Total Questions", len(all_questions))
-                    st.metric("Variations", len(selected_variations))
+                st.metric("Question Types", len(selected_variations))
+                st.metric("Contexts Used", len(selected_contexts))
             
             st.markdown("---")
             
