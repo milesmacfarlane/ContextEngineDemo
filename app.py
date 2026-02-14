@@ -585,7 +585,7 @@ else:
                 answer_key_option = st.radio(
                     "Include answer key?",
                     ["No answer key", "Answers only", "Full solutions with steps"],
-                    key="answer_key"
+                    key="pdf_answer_key"  # Unique key for PDF mode
                 )
                 
                 answer_key_type = {
