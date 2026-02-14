@@ -602,7 +602,7 @@ else:
                 if not can_generate:
                     st.warning("⚠️ Select at least 1 context and 1 question type")
                 
-                if st.button("📄 Generate PDF", type="primary", use_container_width=True, disabled=not can_generate):
+                if st.button("📄 Generate PDF", type="primary", use_container_width=True, disabled=not can_generate, key="generate_pdf_button"):
                     st.session_state.generate_pdf = True
                     
                     # Store settings for PDF generation
