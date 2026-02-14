@@ -911,6 +911,18 @@ else:
                     
                     # Generate PDF
                     variation_names = ", ".join([v.replace('_', ' ').title() for v in selected_variations])
+                    
+                    # Debug: Check if we have questions
+                    if not questions_for_pdf:
+                        st.error(f"No questions were generated! Check your selections.")
+                        st.stop()
+                    
+                    st.info(f"Generated {len(questions_for_pdf)} questions")
+                    
+                    # Debug: Show first question preview
+                    with st.expander("Preview first question"):
+                        st.write(questions_for_pdf[0])
+                    
                     filename = pdf_generator.create_practice_page(
                         skill_name=f"Mean Calculations - {variation_names}",
                         questions=questions_for_pdf,
@@ -954,6 +966,12 @@ else:
                                 'skill_name': meta['ContextName'],
                                 'questions': section_questions
                             })
+                    
+                    if not skill_sections:
+                        st.error("No questions were generated! Check your selections.")
+                        st.stop()
+                    
+                    st.info(f"Generated {len(skill_sections)} sections with {sum(len(s['questions']) for s in skill_sections)} total questions")
                     
                     filename = pdf_generator.create_worksheet(
                         title="Mean Calculation Worksheet",
@@ -999,6 +1017,12 @@ else:
                                 'questions': section_questions
                             })
                     
+                    if not skill_sections:
+                        st.error("No questions were generated! Check your selections.")
+                        st.stop()
+                    
+                    st.info(f"Generated {len(skill_sections)} sections with {sum(len(s['questions']) for s in skill_sections)} total questions")
+                    
                     filename = pdf_generator.create_quiz(
                         title="Mean Calculation Quiz",
                         skill_sections=skill_sections,
@@ -1037,6 +1061,12 @@ else:
                     
                     # Sort by difficulty
                     all_questions.sort(key=lambda x: ['Easy', 'Medium', 'Hard'].index(x['difficulty']))
+                    
+                    if not all_questions:
+                        st.error("No questions were generated! Check your selections.")
+                        st.stop()
+                    
+                    st.info(f"Generated {len(all_questions)} questions")
                     
                     filename = pdf_generator.create_test(
                         title="Grade 12 Essential Mathematics - Mean Calculation Test",
