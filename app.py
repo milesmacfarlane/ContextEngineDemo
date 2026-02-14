@@ -832,7 +832,11 @@ else:
                 
                 st.session_state.generate_pdf = False
                 st.session_state.pdf_file = filename
+                
+                # Show immediate success
                 st.success("✅ PDF generated successfully!")
+                st.info("👇 Scroll down to download your PDF")
+                st.rerun()  # Refresh to show download section
                 
             except Exception as e:
                 st.error(f"Error generating PDF: {e}")
@@ -841,8 +845,14 @@ else:
     
     # Show download button if PDF generated
     if 'pdf_file' in st.session_state and st.session_state.pdf_file:
+        # Clear the generation flag
+        st.session_state.generate_pdf = False
+        
+        # Big success banner
+        st.balloons()
+        st.success("🎉 **PDF Generated Successfully!**")
+        
         st.markdown('<div class="pdf-section">', unsafe_allow_html=True)
-        st.markdown("### ✅ PDF Ready!")
         
         # Read PDF file
         try:
@@ -853,8 +863,29 @@ else:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             download_name = f"{assessment_type}_{timestamp}.pdf"
             
+            # Show PDF info
+            col_info1, col_info2 = st.columns(2)
+            with col_info1:
+                st.metric("Assessment Type", assessment_type.title())
+                st.metric("Answer Key", answer_key_option)
+            with col_info2:
+                if assessment_type == "practice":
+                    st.metric("Questions", len(questions_for_pdf))
+                    st.metric("Variation", selected_variation.replace('_', ' ').title())
+                elif assessment_type in ["worksheet", "quiz"]:
+                    total_q = sum(len(section['questions']) for section in skill_sections)
+                    st.metric("Total Questions", total_q)
+                    st.metric("Skills", len(selected_contexts))
+                else:  # test
+                    st.metric("Total Questions", len(all_questions))
+                    st.metric("Variations", len(selected_variations))
+            
+            st.markdown("---")
+            
+            # Big prominent download button
+            st.markdown("### 📥 Ready to Download")
             st.download_button(
-                label="📥 Download PDF",
+                label=f"⬇️ Download {assessment_type.title()} PDF",
                 data=pdf_bytes,
                 file_name=download_name,
                 mime="application/pdf",
@@ -862,19 +893,26 @@ else:
                 use_container_width=True
             )
             
-            st.info(f"📄 Assessment type: **{assessment_type.title()}**\n\n"
-                   f"📊 Questions: **{len(questions_for_pdf) if assessment_type == 'practice' else 'Multiple'}**\n\n"
-                   f"✍️ Answer key: **{answer_key_option}**")
+            st.info(f"💡 **Tip:** The file will be saved as `{download_name}` in your Downloads folder")
             
         except Exception as e:
             st.error(f"Error reading PDF file: {e}")
         
         st.markdown('</div>', unsafe_allow_html=True)
         
+        st.markdown("---")
+        
         # Generate another button
-        if st.button("🔄 Generate Another PDF"):
-            st.session_state.pdf_file = None
-            st.rerun()
+        col_again1, col_again2 = st.columns([1, 1])
+        with col_again1:
+            if st.button("🔄 Generate Another PDF", use_container_width=True):
+                st.session_state.pdf_file = None
+                st.rerun()
+        with col_again2:
+            if st.button("📝 Back to Single Question Mode", use_container_width=True):
+                st.session_state.mode = 'single'
+                st.session_state.pdf_file = None
+                st.rerun()
 
 # Footer
 st.markdown("---")
